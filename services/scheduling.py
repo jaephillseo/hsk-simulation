@@ -4,8 +4,7 @@ def generate_daily_schedule_full_capacity(master_po, mold_inventory, cycle_time,
     daily_schedule = {}
     calendar_week_map = {}
     color_schedule = {}
-    completion_dates = {}  # Track completion date for each PO
-    po_progress = {}  # Track per-PO completion across all sizes
+    po_last_production_day = {}  # Track the last scheduled production day for each PO
 
     start_date = pd.to_datetime(start_date)
 
@@ -15,10 +14,8 @@ def generate_daily_schedule_full_capacity(master_po, mold_inventory, cycle_time,
     non_size_columns = ["PO DATE", "Factory", "PO#NO", "sku", "COLOR TOP", "XFD", "Customer RTA", "QTY", "Blc Del 1/24"]
     size_columns = [col for col in master_po.columns if col not in non_size_columns and pd.api.types.is_numeric_dtype(master_po[col])]
 
-    # Initialize remaining quantities per PO for all sizes
-    for _, row in master_po.iterrows():
-        po_number = row["PO#NO"]
-        po_progress[po_number] = {"remaining_sizes": set(size_columns), "completion_date": None}
+    # Track the latest production date for each PO
+    po_production_dates = {po: [] for po in master_po["PO#NO"].unique()}
 
     for size in size_columns:
         molds = mold_inventory.loc[mold_inventory['Size'] == float(size), 'Mold Count'].values
@@ -59,13 +56,8 @@ def generate_daily_schedule_full_capacity(master_po, mold_inventory, cycle_time,
                         master_po.at[index, size] = 0
                         color_schedule[(current_date.strftime('%Y-%m-%d'), size)] = row["XFD"]
 
-                        # Mark size as completed
-                        if size in po_progress[po_number]["remaining_sizes"]:
-                            po_progress[po_number]["remaining_sizes"].remove(size)
-
-                        # If this is the last size to complete, assign the completion date
-                        if not po_progress[po_number]["remaining_sizes"]:
-                            po_progress[po_number]["completion_date"] = current_date.strftime('%Y-%m-%d')
+                        # Track the last production day for this PO
+                        po_production_dates[po_number].append(current_date.strftime('%Y-%m-%d'))
 
                     else:
                         master_po.at[index, size] -= produced_today
@@ -80,7 +72,7 @@ def generate_daily_schedule_full_capacity(master_po, mold_inventory, cycle_time,
     daily_schedule_df = daily_schedule_df.round(0)
     daily_schedule_df.index.name = "Date"
 
-    # Assign the final correct completion date for each PO
-    master_po["Completion Date"] = master_po["PO#NO"].map(lambda po: po_progress[po]["completion_date"])
+    # Assign the latest production date for each PO as the correct completion date
+    master_po["Completion Date"] = master_po["PO#NO"].map(lambda po: max(po_production_dates[po]) if po_production_dates[po] else None)
 
     return daily_schedule_df, calendar_week_map, color_schedule, xfd_colors, master_po
