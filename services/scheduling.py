@@ -8,10 +8,18 @@ def generate_daily_schedule_full_capacity(master_po, mold_inventory, cycle_time,
 
     start_date = pd.to_datetime(start_date)
 
+    # Ensure XFD column exists, default to empty if missing
+    if "XFD" not in master_po.columns:
+        master_po["XFD"] = None
+
     unique_xfd = sorted(master_po["XFD"].dropna().unique())
     xfd_colors = {xfd: f"color-{i % 16}" for i, xfd in enumerate(unique_xfd)}
 
-    non_size_columns = ["PO DATE", "Factory", "PO#NO", "sku", "COLOR TOP", "XFD", "Customer RTA", "QTY", "Blc Del 1/24"]
+    # Identify relevant columns dynamically
+    non_size_columns = ["NUM", "PO DATE", "Factory", "PO#NO", "sku", "COLOR TOP", "XFD", "QTY", "Blc Del 1/24"]
+    non_size_columns = [col for col in non_size_columns if col in master_po.columns]  # Ensure only existing columns are used
+
+    # Dynamically detect size columns
     size_columns = [col for col in master_po.columns if col not in non_size_columns and pd.api.types.is_numeric_dtype(master_po[col])]
 
     # Track the latest production date for each PO

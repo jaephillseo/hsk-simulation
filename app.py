@@ -95,7 +95,7 @@ def daily_schedule():
                     "css": "default-color",
                     "excel": "#FFFFFF"  # Default white background
                 }
-        
+
         # Save the schedule as an Excel file for download
         with pd.ExcelWriter(GENERATED_FILE_PATH, engine='xlsxwriter') as writer:
             daily_schedule_df.to_excel(writer, sheet_name="Schedule", index=True)

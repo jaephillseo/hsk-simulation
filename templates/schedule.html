@@ -83,6 +83,7 @@
       <table class="table table-bordered">
         <thead>
           <tr>
+            <th>NUM</th>
             <th>PO#NO</th>
             <th>Customer RTA</th>
             <th>XFD</th>
@@ -93,6 +94,7 @@
         <tbody>
           {% for po in master_po %}
           <tr>
+            <td>{{ po["NUM"] }}</td>
             <td>{{ po["PO#NO"] }}</td>
             <td>{{ po["Customer RTA"] }}</td>
             <td>{{ po["XFD"] }}</td>
