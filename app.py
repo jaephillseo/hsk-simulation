@@ -96,11 +96,14 @@ def daily_schedule():
                     "excel": "#FFFFFF"  # Default white background
                 }
 
+       
+
         # Save the schedule as an Excel file for download
         with pd.ExcelWriter(GENERATED_FILE_PATH, engine='xlsxwriter') as writer:
             daily_schedule_df.to_excel(writer, sheet_name="Schedule", index=True)
             worksheet = writer.sheets["Schedule"]
             workbook = writer.book
+            header_format = workbook.add_format({'bold': True, 'bg_color': '#D9D9D9', 'border':1})
 
             date_format = workbook.add_format({'num_format': 'yyyy-mm-dd'})
             worksheet.set_column(0,0,15,date_format)
