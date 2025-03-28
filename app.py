@@ -98,32 +98,89 @@ def daily_schedule():
         
         # Save the schedule as an Excel file for download
         with pd.ExcelWriter(GENERATED_FILE_PATH, engine='xlsxwriter') as writer:
-            daily_schedule_df.to_excel(writer, sheet_name="Schedule", index=True)
-            worksheet = writer.sheets["Schedule"]
+            # Get workbook and manually create worksheet
             workbook = writer.book
+            worksheet = workbook.add_worksheet("Schedule")
+            writer.sheets["Schedule"] = worksheet
 
-            date_format = workbook.add_format({'num_format': 'yyyy-mm-dd'})
-            worksheet.set_column(0,0,15,date_format)
-
-            # Apply color formatting
+            # Definte formats
+            header_format = workbook.add_format({'bold': True, 'border': 1})
+            date_format = workbook.add_format({'num_format': 'yyyy-mm-dd', 'border': 1})
+            default_format = workbook.add_format({'border': 1})
             formats = {}
 
-            for row_num, date in enumerate(daily_schedule_df.index, start=1):  # Row starts from 1 due to headers
-                for col_num, size in enumerate(daily_schedule_df.columns, start=1):  # Column starts from 1 due to headers
-                    cell_value = daily_schedule_df.at[date, size]
-                    color_entry = color_schedule.get((date.strftime('%Y-%m-%d'), size), None)
+            current_row = 0
 
-                    if color_entry and "excel" in color_entry:
-                        excel_color = color_entry["excel"]
+            # Write PO Table
+            po_columns = ["ORDER NO", "Customer RTA", "XFD", "QTY", "Completion Date"]
+            worksheet.write_row(current_row, 0, po_columns, header_format)
+            current_row += 1
 
-                        # Create format if it doesn't exist yet
+            for _, row in master_po[po_columns].iterrows():
+                for col_idx, col_name in enumerate(po_columns):
+                    worksheet.write(current_row, col_idx, row[col_name], default_format)
+                current_row += 1
+            
+            #Empty Rows
+            current_row += 2
+
+            # Write XFD Legend
+            worksheet.write(current_row, 0, "XFD", header_format)
+            worksheet.write(current_row, 1, "Color", header_format)
+            current_row += 1
+
+            for xfd, color_info in xfd_colors.items():
+                worksheet.write(current_row, 0, xfd, default_format)
+                cell_format = workbook.add_format({'bg_color': color_info["excel"], 'border': 1})
+                worksheet.write(current_row, 1, "", cell_format)
+                current_row += 1
+
+            #Empty Rows
+            current_row += 2
+
+            #Mold Inventory Table
+
+            #Size Headers
+            size_list = mold_inventory["Size"].tolist()
+            worksheet.write_row(current_row, 0, size_list, header_format)
+            current_row += 1
+
+            #Write mold count row
+            count_list = mold_inventory["Mold Count"].tolist()
+            worksheet.write_row(current_row, 0, count_list, default_format)
+            current_row += 1
+
+            current_row += 2
+
+            # Write header row
+            schedule_header = ["Date"] + list(daily_schedule_df.columns)
+            worksheet.write_row(current_row, 0, schedule_header, header_format)
+            current_row += 1
+
+            # Create formats
+            
+
+            for _, row_data in daily_schedule_df.iterrows():
+                worksheet.write_datetime(current_row, 0, pd.to_datetime(row_data.name), date_format)
+
+                for col_num, size in enumerate(daily_schedule_df.columns, start=1):
+                    cell_value = row_data[size]
+                    color_entry = color_schedule.get((row_data.name.strftime('%Y-%m-%d'), size), {})
+                    excel_color = color_entry.get("excel")
+
+                    # Pick format based on color
+                    if excel_color:
                         if excel_color not in formats:
-                            formats[excel_color] = workbook.add_format({'bg_color': excel_color})
-
-                        # Write cell with formatting
-                        worksheet.write(row_num, col_num, cell_value, formats[excel_color])
+                            formats[excel_color] = workbook.add_format({'bg_color': excel_color, 'border': 1})
+                        fmt = formats[excel_color]
                     else:
-                        worksheet.write(row_num, col_num, cell_value)
+                        fmt = default_format
+
+                    worksheet.write(current_row, col_num, cell_value, fmt)
+                
+                current_row += 1
+
+                worksheet.set_column(0, worksheet.dim_colmax, 15)
 
 
     except Exception as e:
